@@ -1,17 +1,55 @@
-# HTML
-# Archive your static HTML project and save it with the build record.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  - main
 
-pool:
-  vmImage: ubuntu-latest
+variables:
+  DEPLOY_PATH: "/var/www/your_domain"
 
-steps:
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(build.sourcesDirectory)'
-    includeRootFolder: false
-- task: PublishBuildArtifacts@1
+stages:
+  - stage: DeployToLaptop
+    jobs:
+      - job: deploy
+        displayName: "Deploy HTML/PHP Site to Laptop"
+        pool:
+          vmImage: ubuntu-latest
+
+        steps:
+          - checkout: self
+
+          - task: ArchiveFiles@2
+            displayName: "📦 Archive Site"
+            inputs:
+              rootFolderOrFile: '$(Build.SourcesDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
+              replaceExistingArchive: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: "⬆️ Publish Artifact"
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/site.zip'
+              artifact: drop
+
+          - task: DownloadPipelineArtifact@2
+            displayName: "⬇️ Download Artifact"
+            inputs:
+              artifact: drop
+              path: '$(Pipeline.Workspace)/drop'
+
+          - task: CopyFilesOverSSH@0
+            displayName: "🚀 Copy to Laptop"
+            inputs:
+              sshEndpoint: 'LaptopSSH'
+              sourceFolder: '$(Pipeline.Workspace)/drop'
+              contents: '**'
+              targetFolder: '$(DEPLOY_PATH)'
+
+          - task: SSH@0
+            displayName: "📂 Extract and Reload"
+            inputs:
+              sshEndpoint: 'LaptopSSH'
+              runOptions: 'commands'
+              commands: |
+                cd $(DEPLOY_PATH)
+                unzip -o site.zip
+                sudo systemctl reload nginx || true
