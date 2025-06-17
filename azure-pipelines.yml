@@ -10,7 +10,7 @@ stages:
       - job: deploy
         displayName: "🚀 Deploy HTML/PHP Site to Laptop"
         pool:
-          vmImage: ubuntu-latest
+          name: Default
 
         steps:
           - checkout: self
