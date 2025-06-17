@@ -1,70 +1,22 @@
 trigger:
-  - main
+  - main  # Trigger on push to main branch
+
+pool:
+  name: Default  # This should match your self-hosted agent pool name
 
 variables:
-  DEPLOY_PATH: "/var/www/your_domain"  # Destination on the laptop
+  DEPLOY_PATH: "/var/www/your_domain"  # Local path on your laptop where the project is served
 
-stages:
-  - stage: DeployToLaptop
-    jobs:
-      - job: deploy
-        displayName: "🚀 Deploy HTML/PHP Site to Laptop"
-        pool:
-          name: Default
+steps:
+  - script: |
+      echo "🚀 Starting Deployment"
+      cd $(DEPLOY_PATH)
 
-        steps:
-          - checkout: self
+      echo "🔄 Resetting local changes"
+      git reset --hard
 
-          # Optional: download private SSH key from secure files
-          - task: DownloadSecureFile@1
-            name: GetSSHKey
-            inputs:
-              secureFile: key.pub  # Must be uploaded in Azure DevOps Library > Secure Files
+      echo "⬇️ Pulling latest code"
+      git pull origin main
 
-          - script: |
-              echo "Setting SSH permissions..."
-              chmod 600 $(GetSSHKey.secureFilePath)
-              echo "Host laptop" >> ~/.ssh/config
-              echo "  HostName $(LAPTOP_HOST)" >> ~/.ssh/config
-              echo "  User $(LAPTOP_USER)" >> ~/.ssh/config
-              echo "  IdentityFile $(GetSSHKey.secureFilePath)" >> ~/.ssh/config
-              echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-            displayName: "🔐 Setup SSH Config"
-
-          - task: ArchiveFiles@2
-            displayName: "📦 Archive Site Files"
-            inputs:
-              rootFolderOrFile: '$(Build.SourcesDirectory)'
-              includeRootFolder: false
-              archiveType: 'zip'
-              archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
-              replaceExistingArchive: true
-
-          - task: PublishPipelineArtifact@1
-            displayName: "⬆️ Publish Site Artifact"
-            inputs:
-              targetPath: '$(Build.ArtifactStagingDirectory)/site.zip'
-              artifact: drop
-
-          - task: DownloadPipelineArtifact@2
-            displayName: "⬇️ Download Artifact for Deployment"
-            inputs:
-              artifact: drop
-              path: '$(Pipeline.Workspace)/drop'
-
-          - script: |
-              echo "Copying files to laptop..."
-              scp -i $(GetSSHKey.secureFilePath) -o StrictHostKeyChecking=no \
-              $(Pipeline.Workspace)/drop/site.zip \
-              $(LAPTOP_USER)@$(LAPTOP_HOST):$(DEPLOY_PATH)/
-            displayName: "📤 SCP to Laptop"
-
-          - script: |
-              echo "Unzipping and restarting nginx..."
-              ssh -i $(GetSSHKey.secureFilePath) -o StrictHostKeyChecking=no \
-              $(LAPTOP_USER)@$(LAPTOP_HOST) << 'EOF'
-                cd $(DEPLOY_PATH)
-                unzip -o site.zip
-                sudo systemctl reload nginx
-              EOF
-            displayName: "🔧 Remote Unzip + Reload NGINX"
+      echo "✅ Code pulled successfully"
+    displayName: "📥 Pull Latest Code"
