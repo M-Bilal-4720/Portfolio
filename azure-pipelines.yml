@@ -1,17 +1,70 @@
-# HTML
-# Archive your static HTML project and save it with the build record.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
-- main
+  - main
 
-pool:
-  vmImage: ubuntu-latest
+variables:
+  DEPLOY_PATH: "/var/www/your_domain"  # Destination on the laptop
 
-steps:
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(build.sourcesDirectory)'
-    includeRootFolder: false
-- task: PublishBuildArtifacts@1
+stages:
+  - stage: DeployToLaptop
+    jobs:
+      - job: deploy
+        displayName: "🚀 Deploy HTML/PHP Site to Laptop"
+        pool:
+          vmImage: ubuntu-latest
+
+        steps:
+          - checkout: self
+
+          # Optional: download private SSH key from secure files
+          - task: DownloadSecureFile@1
+            name: GetSSHKey
+            inputs:
+              secureFile: key.pub  # Must be uploaded in Azure DevOps Library > Secure Files
+
+          - script: |
+              echo "Setting SSH permissions..."
+              chmod 600 $(GetSSHKey.secureFilePath)
+              echo "Host laptop" >> ~/.ssh/config
+              echo "  HostName $(LAPTOP_HOST)" >> ~/.ssh/config
+              echo "  User $(LAPTOP_USER)" >> ~/.ssh/config
+              echo "  IdentityFile $(GetSSHKey.secureFilePath)" >> ~/.ssh/config
+              echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+            displayName: "🔐 Setup SSH Config"
+
+          - task: ArchiveFiles@2
+            displayName: "📦 Archive Site Files"
+            inputs:
+              rootFolderOrFile: '$(Build.SourcesDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/site.zip'
+              replaceExistingArchive: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: "⬆️ Publish Site Artifact"
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/site.zip'
+              artifact: drop
+
+          - task: DownloadPipelineArtifact@2
+            displayName: "⬇️ Download Artifact for Deployment"
+            inputs:
+              artifact: drop
+              path: '$(Pipeline.Workspace)/drop'
+
+          - script: |
+              echo "Copying files to laptop..."
+              scp -i $(GetSSHKey.secureFilePath) -o StrictHostKeyChecking=no \
+              $(Pipeline.Workspace)/drop/site.zip \
+              $(LAPTOP_USER)@$(LAPTOP_HOST):$(DEPLOY_PATH)/
+            displayName: "📤 SCP to Laptop"
+
+          - script: |
+              echo "Unzipping and restarting nginx..."
+              ssh -i $(GetSSHKey.secureFilePath) -o StrictHostKeyChecking=no \
+              $(LAPTOP_USER)@$(LAPTOP_HOST) << 'EOF'
+                cd $(DEPLOY_PATH)
+                unzip -o site.zip
+                sudo systemctl reload nginx
+              EOF
+            displayName: "🔧 Remote Unzip + Reload NGINX"
