@@ -19,7 +19,7 @@ stages:
           - task: DownloadSecureFile@1
             name: GetSSHKey
             inputs:
-              secureFile: laptop-dev.pem  # Must be uploaded in Azure DevOps Library > Secure Files
+              secureFile: key.pub  # Must be uploaded in Azure DevOps Library > Secure Files
 
           - script: |
               echo "Setting SSH permissions..."
