@@ -2,21 +2,37 @@ trigger:
   - main
 
 variables:
-  DEPLOY_PATH: "/var/www/your_domain"
+  DEPLOY_PATH: "/var/www/your_domain"  # Destination on the laptop
 
 stages:
   - stage: DeployToLaptop
     jobs:
       - job: deploy
-        displayName: "Deploy HTML/PHP Site to Laptop"
+        displayName: "🚀 Deploy HTML/PHP Site to Laptop"
         pool:
           vmImage: ubuntu-latest
 
         steps:
           - checkout: self
 
+          # Optional: download private SSH key from secure files
+          - task: DownloadSecureFile@1
+            name: GetSSHKey
+            inputs:
+              secureFile: laptop-dev.pem  # Must be uploaded in Azure DevOps Library > Secure Files
+
+          - script: |
+              echo "Setting SSH permissions..."
+              chmod 600 $(GetSSHKey.secureFilePath)
+              echo "Host laptop" >> ~/.ssh/config
+              echo "  HostName $(LAPTOP_HOST)" >> ~/.ssh/config
+              echo "  User $(LAPTOP_USER)" >> ~/.ssh/config
+              echo "  IdentityFile $(GetSSHKey.secureFilePath)" >> ~/.ssh/config
+              echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+            displayName: "🔐 Setup SSH Config"
+
           - task: ArchiveFiles@2
-            displayName: "📦 Archive Site"
+            displayName: "📦 Archive Site Files"
             inputs:
               rootFolderOrFile: '$(Build.SourcesDirectory)'
               includeRootFolder: false
@@ -25,31 +41,30 @@ stages:
               replaceExistingArchive: true
 
           - task: PublishPipelineArtifact@1
-            displayName: "⬆️ Publish Artifact"
+            displayName: "⬆️ Publish Site Artifact"
             inputs:
               targetPath: '$(Build.ArtifactStagingDirectory)/site.zip'
               artifact: drop
 
           - task: DownloadPipelineArtifact@2
-            displayName: "⬇️ Download Artifact"
+            displayName: "⬇️ Download Artifact for Deployment"
             inputs:
               artifact: drop
               path: '$(Pipeline.Workspace)/drop'
 
-          - task: CopyFilesOverSSH@0
-            displayName: "🚀 Copy to Laptop"
-            inputs:
-              sshEndpoint: 'LaptopSSH'
-              sourceFolder: '$(Pipeline.Workspace)/drop'
-              contents: '**'
-              targetFolder: '$(DEPLOY_PATH)'
+          - script: |
+              echo "Copying files to laptop..."
+              scp -i $(GetSSHKey.secureFilePath) -o StrictHostKeyChecking=no \
+              $(Pipeline.Workspace)/drop/site.zip \
+              $(LAPTOP_USER)@$(LAPTOP_HOST):$(DEPLOY_PATH)/
+            displayName: "📤 SCP to Laptop"
 
-          - task: SSH@0
-            displayName: "📂 Extract and Reload"
-            inputs:
-              sshEndpoint: 'LaptopSSH'
-              runOptions: 'commands'
-              commands: |
+          - script: |
+              echo "Unzipping and restarting nginx..."
+              ssh -i $(GetSSHKey.secureFilePath) -o StrictHostKeyChecking=no \
+              $(LAPTOP_USER)@$(LAPTOP_HOST) << 'EOF'
                 cd $(DEPLOY_PATH)
                 unzip -o site.zip
-                sudo systemctl reload nginx || true
+                sudo systemctl reload nginx
+              EOF
+            displayName: "🔧 Remote Unzip + Reload NGINX"
