@@ -10,19 +10,18 @@ variables:
 steps:
   - script: |
       echo "🚀 Starting Deployment"
-
-      echo "Changing to directory: $(DEPLOY_PATH)"
-      cd "$(DEPLOY_PATH)" || { echo "❌ Directory not found: $(DEPLOY_PATH)"; exit 1; }
-
-      if [ -d ".git" ]; then
-        echo "✅ Git repo found at $(DEPLOY_PATH)"
-        git reset --hard
-        git pull origin main
-        echo "✅ Code pulled successfully"
-      else
-        echo "❌ No git repo found at $(DEPLOY_PATH)"
-        ls -la
-        exit 1
-      fi
+      cd /var/www/your_domain/Portfolio
+      
+      echo "🔐 Marking repo as safe"
+      git config --global --add safe.directory /var/www/your_domain/Portfolio
+      
+      echo "🔄 Resetting local changes"
+      git reset --hard
+      
+      echo "⬇️ Pulling latest code"
+      git pull origin main
+      
+      echo "✅ Code pulled successfully"
     displayName: "📥 Pull Latest Code"
+
 
