@@ -5,25 +5,24 @@ pool:
   name: Default  # Make sure this matches your self-hosted agent pool name
 
 variables:
-  DEPLOY_PATH: "/var/www/your_domain/Portfolio"  # Absolute path to your local deployment directory
+  DEPLOY_PATH: "/var/www/your_domain/Portfolio"
 
 steps:
-  - checkout: none  # Prevent Azure Pipelines from doing its own checkout (since you're doing manual git pull)
-
   - script: |
       echo "🚀 Starting Deployment"
-      
-      if [ -d "$DEPLOY_PATH/.git" ]; then
-        echo "✅ Git repo found at $DEPLOY_PATH"
+
+      echo "Changing to directory: $(DEPLOY_PATH)"
+      cd "$(DEPLOY_PATH)" || { echo "❌ Directory not found: $(DEPLOY_PATH)"; exit 1; }
+
+      if [ -d ".git" ]; then
+        echo "✅ Git repo found at $(DEPLOY_PATH)"
+        git reset --hard
+        git pull origin main
+        echo "✅ Code pulled successfully"
       else
-        echo "❌ No git repo found at $DEPLOY_PATH"
-        ls -la $DEPLOY_PATH
+        echo "❌ No git repo found at $(DEPLOY_PATH)"
+        ls -la
         exit 1
       fi
-      
-      cd $DEPLOY_PATH
-      git reset --hard
-      git pull origin main
-      echo "✅ Code pulled successfully"
     displayName: "📥 Pull Latest Code"
 
