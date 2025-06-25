@@ -19,7 +19,7 @@ steps:
       git reset --hard
       
       echo "⬇️ Pulling latest code"
-      git pull origin dev
+      git pull --rebase origin dev
       
       echo "✅ Code pulled successfully"
     displayName: "📥 Pull Latest Code Successfully"
