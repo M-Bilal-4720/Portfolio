@@ -5,12 +5,12 @@ pool:
   name: Default  # Make sure this matches your self-hosted agent pool name
 
 variables:
-  DEPLOY_PATH: "/var/www/your_domain/Portfolio"
+  DEPLOY_PATH: "/var/www/your_domain/Portfolio-dev"
 
 steps:
   - script: |
       echo "🚀 Starting Deployment"
-      cd /var/www/your_domain/Portfolio
+      cd /var/www/your_domain/Portfolio-dev
       
       echo "🔐 Marking repo as safe"
       git config --global --add safe.directory /var/www/your_domain/Portfolio-dev
