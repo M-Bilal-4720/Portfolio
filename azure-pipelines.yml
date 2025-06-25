@@ -12,14 +12,18 @@ steps:
 
   - script: |
       echo "🚀 Starting Deployment"
-
-      cd $DEPLOY_PATH || { echo "❌ Directory not found: $DEPLOY_PATH"; exit 1; }
-
-      echo "🔄 Resetting local changes"
+      
+      if [ -d "$DEPLOY_PATH/.git" ]; then
+        echo "✅ Git repo found at $DEPLOY_PATH"
+      else
+        echo "❌ No git repo found at $DEPLOY_PATH"
+        ls -la $DEPLOY_PATH
+        exit 1
+      fi
+      
+      cd $DEPLOY_PATH
       git reset --hard
-
-      echo "⬇️ Pulling latest code"
       git pull origin main
-
       echo "✅ Code pulled successfully"
     displayName: "📥 Pull Latest Code"
+
