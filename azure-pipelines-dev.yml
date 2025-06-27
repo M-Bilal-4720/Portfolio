@@ -32,7 +32,7 @@ steps:
       sudo docker rm portfolio-site || true
 
       echo "🚀 Running Docker container"
-      sudo docker run -d -p 80:80 --name portfolio-site portfolio-site
+      sudo docker run -d -p 8085:80 --name portfolio-site portfolio-site
     displayName: "🐳 Build and Run Docker Container"
 
 
