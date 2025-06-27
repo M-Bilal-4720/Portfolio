@@ -1,7 +1,7 @@
 FROM nginx:alpine
 
 # Copy your static site files to nginx html directory
-COPY ./html /var/www/your_domain/Portfolio-dev
+COPY ./html /usr/share/nginx/html
 
 # Copy custom nginx config
 COPY portfolio.conf /etc/nginx/conf.d/default.conf
