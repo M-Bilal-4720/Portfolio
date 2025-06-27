@@ -1,0 +1,37 @@
+trigger:
+  - dev  # Trigger on push to main branch
+
+pool:
+  name: Default  # Make sure this matches your self-hosted agent pool name
+
+variables:
+  DEPLOY_PATH: "/var/www/your_domain/Portfolio-dev"
+
+steps:
+  - script: |
+      echo "🚀 Starting Deployment"
+      cd /var/www/your_domain/Portfolio-dev
+      
+      echo "🔐 Marking repo as safe"
+      git config --global --add safe.directory /var/www/your_domain/Portfolio-dev
+      
+      echo "🔄 Resetting local changes"
+      git reset --hard
+      
+      echo "⬇️ Pulling latest code"
+      git pull --rebase origin dev
+      
+      echo "✅ Code pulled successfully"
+      echo "📥 Pull Latest Code Successfully" |
+      echo "🐳 Building Docker image"
+      docker build -t portfolio-site .
+
+      echo "🛑 Stopping and removing existing container (if any)"
+      docker stop portfolio-site || true
+      docker rm portfolio-site || true
+
+      echo "🚀 Running Docker container"
+      docker run -d -p 80:80 --name portfolio-site portfolio-site
+    displayName: "🐳 Build and Run Docker Container"
+
+
