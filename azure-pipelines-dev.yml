@@ -25,14 +25,14 @@ steps:
     displayName: "📥 Pull Latest Code Successfully"
   - script: |
       echo "🐳 Building Docker image"
-      docker build -t portfolio-site .
+      sudo docker build -t portfolio-site .
 
       echo "🛑 Stopping and removing existing container (if any)"
-      docker stop portfolio-site || true
-      docker rm portfolio-site || true
+      sudo docker stop portfolio-site || true
+      sudo docker rm portfolio-site || true
 
       echo "🚀 Running Docker container"
-      docker run -d -p 80:80 --name portfolio-site portfolio-site
+      sudo docker run -d -p 80:80 --name portfolio-site portfolio-site
     displayName: "🐳 Build and Run Docker Container"
 
 
